@@ -1,7 +1,7 @@
 // Default settings
 const DEFAULT_SETTINGS = {
   isEnabled: true,
-  intervalMinutes: 5,
+  intervalMinutes: 1,
   playSound: true,
   requireInteraction: false,
   dhikrList: [

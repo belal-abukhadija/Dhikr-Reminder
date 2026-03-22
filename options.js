@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentDhikrList = data.dhikrList || [];
 
   // Initialize UI
-  intervalInput.value = data.intervalMinutes || 5;
+  intervalInput.value = data.intervalMinutes || 1;
   soundToggle.checked = data.playSound !== false; // default true
   persistentToggle.checked = data.requireInteraction === true; // default false
   masterToggle.checked = data.isEnabled !== false; // default true

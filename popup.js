@@ -9,13 +9,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Set initial state
   toggleSwitch.checked = data.isEnabled !== false; // Default true
-  updateUI(toggleSwitch.checked, data.intervalMinutes || 5);
+  updateUI(toggleSwitch.checked, data.intervalMinutes || 1);
 
   // Handle toggle change
   toggleSwitch.addEventListener('change', async (e) => {
     const isEnabled = e.target.checked;
     await chrome.storage.sync.set({ isEnabled });
-    updateUI(isEnabled, data.intervalMinutes || 5);
+    updateUI(isEnabled, data.intervalMinutes || 1);
     
     // Notify background script to update alarms
     chrome.runtime.sendMessage({ action: "updateSettings" });

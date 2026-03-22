@@ -14,14 +14,14 @@ A beautiful, minimalist Dhikr (Islamic remembrance) reminder for your daily rout
 
 There are two primary ways to install this extension on your browser:
 
-### Method 1: Install from Source (Developer Mode)
+### Method 1: Install from Source (Developer Mode) on your browser
 This is the quickest method if you just downloaded the code from GitHub.
 
 1. Download or clone this repository to your computer. If you downloaded a `.zip` file, extract it to a folder.
 2. Open Google Chrome and navigate to `chrome://extensions/` in the address bar.
 3. Turn on **Developer mode** using the toggle switch in the top right corner.
 4. Click the **Load unpacked** button that appears in the top left corner.
-5. Select the folder containing the extension files (the folder where `manifest.json` is located).
+5. Select the folder containing the extension files.
 6. The Dhikr Reminder extension is now installed! Pin it to your toolbar for easy access.
 
 ### Method 2: Install from the Chrome Web Store
