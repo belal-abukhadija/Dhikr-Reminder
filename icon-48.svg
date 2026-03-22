@@ -1,0 +1,9 @@
+<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="48" height="48" rx="8" fill="#4F46E5"></rect>
+
+  <!-- Text: تذكير (maximized) -->
+  <text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle" fill="#FFFFFF" font-size="18" font-family="Tahoma, Arial, sans-serif" font-weight="bold" letter-spacing="-1">
+    تذكير
+  </text>
+</svg>

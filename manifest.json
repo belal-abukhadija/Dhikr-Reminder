@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Dhikr Reminder",
+  "version": "1.0",
+  "description": "A beautiful, minimalist Dhikr reminder for your daily routine.",
+  "permissions": ["alarms", "notifications", "storage"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "options.html",
+    "default_title": "Dhikr Reminder",
+    "default_icon": "icon-48.png"
+  },
+  "options_page": "options.html",
+  "icons": {
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  }
+}
