@@ -3,12 +3,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const statusLabel = document.getElementById('statusLabel');
   const intervalLabel = document.getElementById('intervalLabel');
   const optionsBtn = document.getElementById('optionsBtn');
+  const statusBar = document.getElementById('statusBar');
+  // Load language first
+  await loadLanguage();
 
   // Load current settings from storage
   const data = await chrome.storage.sync.get(['isEnabled', 'intervalMinutes']);
-  
+
   // Set initial state
-  toggleSwitch.checked = data.isEnabled !== false; // Default true
+  toggleSwitch.checked = data.isEnabled !== false;
   updateUI(toggleSwitch.checked, data.intervalMinutes || 1);
 
   // Handle toggle change
@@ -16,8 +19,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isEnabled = e.target.checked;
     await chrome.storage.sync.set({ isEnabled });
     updateUI(isEnabled, data.intervalMinutes || 1);
-    
-    // Notify background script to update alarms
     chrome.runtime.sendMessage({ action: "updateSettings" });
   });
 
@@ -32,13 +33,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function updateUI(isEnabled, intervalMinutes) {
     if (isEnabled) {
-      statusLabel.textContent = "Status: Active";
-      statusLabel.style.color = "var(--success-color)";
-      intervalLabel.textContent = `Reminding every ${intervalMinutes} min${intervalMinutes > 1 ? 's' : ''}`;
+      statusLabel.textContent = t('statusActive');
+      statusBar.classList.add('active');
+      statusBar.classList.remove('paused');
+      intervalLabel.textContent = t('everyMins', intervalMinutes);
     } else {
-      statusLabel.textContent = "Status: Paused";
-      statusLabel.style.color = "var(--text-muted)";
-      intervalLabel.textContent = "Reminders are turned off";
+      statusLabel.textContent = t('statusPaused');
+      statusBar.classList.remove('active');
+      statusBar.classList.add('paused');
+      intervalLabel.textContent = t('statusOff');
     }
   }
 });
