@@ -137,6 +137,23 @@
   color: var(--bg-deep);
 }
 
+/* "Custom" is a word, not a number — let it size to its text. */
+.seg-btn-custom { flex: 0 0 auto; }
+
+/* ═══════════ INTERVAL PICKER ═══════════ */
+.interval-row { display: flex; align-items: center; gap: var(--space-2); }
+.interval-row .segmented { flex: 1; min-width: 0; }
+
+.interval-unit {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.interval-custom { display: flex; align-items: center; gap: var(--space-2); }
+.interval-custom[hidden] { display: none; }
+
 /* ═══════════ BUTTONS ═══════════ */
 .btn {
   display: inline-flex;

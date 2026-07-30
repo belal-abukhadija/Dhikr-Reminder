@@ -106,7 +106,7 @@ const TRANSLATIONS = {
     sectionReminders: 'التذكيرات',
     remindersOn: 'التذكيرات',
     remindEvery: 'ذكّرني كل',
-    intervalUnit: 'د',
+    intervalUnit: 'دقيقة',
     intervalCustom: 'مخصص',
     intervalCustomLabel: 'مدة مخصصة بالدقائق',
     intervalRange: (min, max) => `أدخل رقماً بين ${min} و ${max}.`,

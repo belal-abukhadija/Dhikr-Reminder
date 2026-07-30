@@ -41,7 +41,16 @@
 
     <div class="popup-interval">
       <span class="popup-interval-label" id="quickIntervalLabel" data-i18n="quickInterval">Reminder interval</span>
-      <div class="segmented" id="intervalSegmented" role="radiogroup" aria-labelledby="quickIntervalLabel"></div>
+      <div class="interval-row">
+        <div class="segmented" id="intervalSegmented" role="radiogroup" aria-labelledby="quickIntervalLabel"></div>
+        <span class="interval-unit" data-i18n="intervalUnit">min</span>
+      </div>
+      <div class="interval-custom" id="intervalCustom" hidden>
+        <input type="number" class="field field-num" id="intervalInput" min="1" max="1440" step="1"
+               data-i18n-aria="intervalCustomLabel">
+        <span class="interval-unit" data-i18n="intervalUnit">min</span>
+      </div>
+      <p class="field-error" id="intervalError" role="alert"></p>
     </div>
 
     <button type="button" class="btn btn-primary" id="openSettingsBtn">

@@ -66,8 +66,6 @@ body { min-width: 360px; }
 
 /* Interval */
 .interval-block { display: flex; flex-direction: column; gap: var(--space-2); width: 100%; }
-.interval-custom { display: flex; align-items: center; gap: var(--space-2); }
-.interval-custom[hidden] { display: none; }
 
 /* Active window */
 .window-fields { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }

@@ -1,10 +1,10 @@
 import {
-  getState, setState, subscribe, flush, countEnabled, MIN_INTERVAL, MAX_INTERVAL,
+  getState, setState, subscribe, flush, countEnabled,
 } from './js/store.js';
 import { initLanguage, t } from './js/i18n.js';
 import { describeNext, formatCountdown } from './js/schedule.js';
+import { createIntervalControl } from './js/interval-control.js';
 
-const PRESETS = [1, 5, 15, 30, 60];
 const ALARM_NAME = 'dhikrAlarm';
 
 const el = (id) => document.getElementById(id);
@@ -16,6 +16,9 @@ const ui = {
   statusA11y: el('statusA11y'),
   master: el('masterToggle'),
   segmented: el('intervalSegmented'),
+  custom: el('intervalCustom'),
+  intervalInput: el('intervalInput'),
+  intervalError: el('intervalError'),
   openSettings: el('openSettingsBtn'),
 };
 
@@ -24,62 +27,17 @@ let scheduledTime = null;
 
 /* ═══════════ INTERVAL ═══════════ */
 
-function buildSegmented() {
-  ui.segmented.replaceChildren(...PRESETS.map((minutes) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'seg-btn';
-    btn.setAttribute('role', 'radio');
-    btn.dataset.minutes = String(minutes);
-    btn.textContent = String(minutes);
-    btn.setAttribute('aria-label', `${minutes} ${t('intervalUnit')}`);
-    return btn;
-  }));
-}
-
-function paintSegmented() {
-  const buttons = [...ui.segmented.querySelectorAll('.seg-btn')];
-  for (const btn of buttons) {
-    const selected = Number(btn.dataset.minutes) === state.intervalMinutes;
-    btn.setAttribute('aria-checked', String(selected));
-    // Only the selected radio is tabbable; arrows move within the group.
-    btn.tabIndex = selected ? 0 : -1;
-  }
-  // A custom interval set on the settings page matches no preset here —
-  // keep the group reachable by Tab anyway.
-  if (!buttons.some((b) => b.getAttribute('aria-checked') === 'true') && buttons[0]) {
-    buttons[0].tabIndex = 0;
-  }
-}
-
-function applyInterval(minutes) {
-  state.intervalMinutes = Math.min(MAX_INTERVAL, Math.max(MIN_INTERVAL, minutes));
-  setState({ intervalMinutes: state.intervalMinutes }, { immediate: true });
-  notifyBackground();
-  paintSegmented();
-}
-
-ui.segmented.addEventListener('click', (e) => {
-  const btn = e.target.closest('.seg-btn');
-  if (btn) applyInterval(Number(btn.dataset.minutes));
-});
-
-// Arrow-key navigation, as role="radiogroup" requires.
-ui.segmented.addEventListener('keydown', (e) => {
-  const steps = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
-  const step = steps[e.key];
-  if (!step) return;
-  e.preventDefault();
-
-  const buttons = [...ui.segmented.querySelectorAll('.seg-btn')];
-  const horizontal = e.key === 'ArrowRight' || e.key === 'ArrowLeft';
-  const rtl = document.documentElement.dir === 'rtl';
-  const delta = horizontal && rtl ? -step : step;
-
-  const current = buttons.findIndex((b) => b.getAttribute('aria-checked') === 'true');
-  const next = buttons[((current < 0 ? 0 : current) + delta + buttons.length) % buttons.length];
-  applyInterval(Number(next.dataset.minutes));
-  next.focus();
+const interval = createIntervalControl({
+  segmented: ui.segmented,
+  custom: ui.custom,
+  input: ui.intervalInput,
+  error: ui.intervalError,
+  getMinutes: () => state.intervalMinutes,
+  onCommit: (minutes, { immediate }) => {
+    state.intervalMinutes = minutes;
+    setState({ intervalMinutes: minutes }, { immediate });
+    notifyBackground();
+  },
 });
 
 /* ═══════════ MASTER TOGGLE ═══════════ */
@@ -144,8 +102,8 @@ async function init() {
   await refreshAlarm();
 
   ui.master.checked = state.isEnabled;
-  buildSegmented();
-  paintSegmented();
+  interval.build();
+  interval.paint();
   paintStatus();
 
   window.setInterval(paintStatus, 1000);
@@ -154,7 +112,7 @@ async function init() {
     state = next;
     await refreshAlarm();
     ui.master.checked = state.isEnabled;
-    paintSegmented();
+    interval.paint();
     paintStatus();
   });
 }

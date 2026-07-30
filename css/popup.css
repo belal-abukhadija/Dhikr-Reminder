@@ -35,6 +35,11 @@ body { width: 320px; }
 
 .popup-interval { display: flex; flex-direction: column; gap: var(--space-2); }
 
+/* Six buttons plus the unit have to fit 320px, so the numeric presets run
+   tighter here than on the settings page. */
+.popup-interval .seg-btn { min-width: 26px; padding-inline: var(--space-1); }
+.popup-interval .seg-btn-custom { padding-inline: var(--space-2); }
+
 .popup-interval-label {
   font-size: var(--text-xs);
   font-weight: 600;

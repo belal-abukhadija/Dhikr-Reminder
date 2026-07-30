@@ -1,12 +1,12 @@
 import {
   getState, setState, subscribe, flush, countEnabled, makeId, DEFAULT_TEXTS,
-  MIN_INTERVAL, MAX_INTERVAL, MAX_DHIKR, MAX_DHIKR_LENGTH,
+  MAX_DHIKR, MAX_DHIKR_LENGTH,
 } from './js/store.js';
 import { initLanguage, setLanguage, getLang, t, applyLanguage } from './js/i18n.js';
 import { describeNext, formatCountdown, parseHM } from './js/schedule.js';
 import { showToast, showUndo, mountToastHost } from './js/toast.js';
+import { createIntervalControl } from './js/interval-control.js';
 
-const PRESETS = [1, 5, 15, 30, 60];
 const ALARM_NAME = 'dhikrAlarm';
 
 const el = (id) => document.getElementById(id);
@@ -113,105 +113,17 @@ ui.master.addEventListener('change', () => {
 
 /* ═══════════ INTERVAL ═══════════ */
 
-function buildSegmented() {
-  const buttons = PRESETS.map((minutes) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'seg-btn';
-    btn.setAttribute('role', 'radio');
-    btn.dataset.minutes = String(minutes);
-    btn.textContent = String(minutes);
-    btn.setAttribute('aria-label', `${minutes} ${t('intervalUnit')}`);
-    return btn;
-  });
-
-  const customBtn = document.createElement('button');
-  customBtn.type = 'button';
-  customBtn.className = 'seg-btn';
-  customBtn.setAttribute('role', 'radio');
-  customBtn.dataset.custom = 'true';
-  customBtn.textContent = t('intervalCustom');
-
-  ui.segmented.replaceChildren(...buttons, customBtn);
-}
-
-function paintInterval() {
-  const isPreset = PRESETS.includes(state.intervalMinutes);
-  for (const btn of ui.segmented.querySelectorAll('.seg-btn')) {
-    const selected = btn.dataset.custom
-      ? !isPreset
-      : Number(btn.dataset.minutes) === state.intervalMinutes;
-    btn.setAttribute('aria-checked', String(selected));
-    btn.tabIndex = selected ? 0 : -1;
-  }
-  ui.custom.hidden = isPreset;
-  ui.intervalInput.value = String(state.intervalMinutes);
-}
-
-function commitInterval(minutes) {
-  state.intervalMinutes = Math.min(MAX_INTERVAL, Math.max(MIN_INTERVAL, minutes));
-  setState({ intervalMinutes: state.intervalMinutes }, { immediate: true });
-  notifyBackground();
-  paintInterval();
-}
-
-ui.segmented.addEventListener('click', (e) => {
-  const btn = e.target.closest('.seg-btn');
-  if (!btn) return;
-  ui.intervalError.textContent = '';
-
-  if (btn.dataset.custom) {
-    // Reveal the number field but do not change the stored value yet.
-    ui.custom.hidden = false;
-    for (const b of ui.segmented.querySelectorAll('.seg-btn')) {
-      b.setAttribute('aria-checked', String(b === btn));
-      b.tabIndex = b === btn ? 0 : -1;
-    }
-    ui.intervalInput.focus();
-    ui.intervalInput.select();
-    return;
-  }
-
-  commitInterval(Number(btn.dataset.minutes));
-});
-
-ui.segmented.addEventListener('keydown', (e) => {
-  const steps = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
-  const step = steps[e.key];
-  if (!step) return;
-  e.preventDefault();
-
-  const buttons = [...ui.segmented.querySelectorAll('.seg-btn')];
-  const horizontal = e.key === 'ArrowRight' || e.key === 'ArrowLeft';
-  const rtl = document.documentElement.dir === 'rtl';
-  const delta = horizontal && rtl ? -step : step;
-
-  const current = Math.max(0, buttons.findIndex((b) => b.getAttribute('aria-checked') === 'true'));
-  const next = buttons[(current + delta + buttons.length) % buttons.length];
-  next.click();
-  next.focus();
-});
-
-// Typing is the one place digits are entered, so this debounces.
-ui.intervalInput.addEventListener('input', () => {
-  const raw = ui.intervalInput.value.trim();
-  const n = Number(raw);
-  const valid = raw !== '' && Number.isFinite(n) && n >= MIN_INTERVAL && n <= MAX_INTERVAL;
-
-  ui.intervalInput.classList.toggle('invalid', !valid);
-  ui.intervalError.textContent = valid ? '' : t('intervalRange', MIN_INTERVAL, MAX_INTERVAL);
-  if (!valid) return;                       // keep the last valid stored value
-
-  state.intervalMinutes = Math.trunc(n);
-  setState({ intervalMinutes: state.intervalMinutes });   // debounced 400ms
-  notifyBackground();
-});
-
-// Snap back to the stored value if the user leaves the field invalid.
-ui.intervalInput.addEventListener('blur', () => {
-  ui.intervalInput.classList.remove('invalid');
-  ui.intervalError.textContent = '';
-  ui.intervalInput.value = String(state.intervalMinutes);
+const interval = createIntervalControl({
+  segmented: ui.segmented,
+  custom: ui.custom,
+  input: ui.intervalInput,
+  error: ui.intervalError,
+  getMinutes: () => state.intervalMinutes,
+  onCommit: (minutes, { immediate }) => {
+    state.intervalMinutes = minutes;
+    setState({ intervalMinutes: minutes }, { immediate });
+    notifyBackground();
+  },
 });
 
 /* ═══════════ ACTIVE WINDOW ═══════════ */
@@ -661,8 +573,8 @@ listUi.importFile.addEventListener('change', async () => {
 
 function repaintAll() {
   applyLanguage();
-  buildSegmented();
-  paintInterval();
+  interval.build();
+  interval.paint();
   paintWindow();
   paintStatus();
   renderList();
@@ -691,7 +603,7 @@ async function init() {
     ui.master.checked = state.isEnabled;
     ui.sound.checked = state.playSound;
     ui.persistent.checked = state.requireInteraction;
-    paintInterval();
+    interval.paint();
     paintWindow();
     paintStatus();
     renderList();

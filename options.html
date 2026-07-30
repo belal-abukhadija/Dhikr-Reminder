@@ -63,11 +63,14 @@
                 <div class="row-label" id="intervalLabel" data-i18n="remindEvery">Remind me every</div>
               </div>
               <div class="interval-block">
-                <div class="segmented" id="intervalSegmented" role="radiogroup" aria-labelledby="intervalLabel"></div>
+                <div class="interval-row">
+                  <div class="segmented" id="intervalSegmented" role="radiogroup" aria-labelledby="intervalLabel"></div>
+                  <span class="interval-unit" data-i18n="intervalUnit">min</span>
+                </div>
                 <div class="interval-custom" id="intervalCustom" hidden>
                   <input type="number" class="field field-num" id="intervalInput" min="1" max="1440" step="1"
                          data-i18n-aria="intervalCustomLabel">
-                  <span class="field-count" data-i18n="intervalUnit">min</span>
+                  <span class="interval-unit" data-i18n="intervalUnit">min</span>
                 </div>
                 <p class="field-error" id="intervalError" role="alert"></p>
               </div>
