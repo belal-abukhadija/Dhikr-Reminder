@@ -2,11 +2,50 @@
 
 A beautiful, minimalist Dhikr (Islamic remembrance) reminder for your daily routine. This Chrome extension helps you maintain a consistent habit of Dhikr by sending periodic notifications directly to your browser.
 
-## Features
+## Surfaces
 
-- **Minimalist Interface:** Clean and easy-to-use settings directly from the extension popup.
-- **Customizable Intervals:** Set exactly how often you want to receive reminders.
-- **Gentle Notifications:** Non-intrusive, native browser alerts to keep you mindful throughout your day.
+- **Popup** (`popup.html`) — status with a live countdown to the next reminder, master on/off, interval presets, and a link to settings.
+- **Settings page** (`options.html`) — full configuration, opened in its own tab.
+
+## Settings
+
+| Setting | Notes |
+|---|---|
+| Reminders on/off | Master switch; clears the alarm when off |
+| Interval | Presets 1/5/15/30/60, or a custom value from 1 to 1440 minutes |
+| Active window | Optional. Reminders fire only between the two times; overnight ranges supported |
+| Play sound | Mutes the system chime when off |
+| Persistent alert | Notification stays until dismissed |
+| Language | English or Arabic, with full RTL layout |
+
+All settings save automatically — there is no Save button. Typed input is debounced
+400ms to stay inside `chrome.storage.sync`'s 120-writes-per-minute quota.
+
+## Dhikr list
+
+Add, edit, delete (with undo), enable or disable entries individually, and reorder by
+drag or `Alt+↑` / `Alt+↓`. Restore missing defaults, or export and import the list as
+plain text, one dhikr per line. Limits: 100 entries, 200 characters each.
+
+## Development
+
+No dependencies and no build step. Load the repo root as an unpacked extension (see
+Method 1 below).
+
+Run the tests:
+
+    npm test          # or: node --test "test/*.test.js"
+
+Tests cover `js/schedule.js` (active-window arithmetic including the overnight wrap,
+countdown formatting) and `js/store.js` (the v1→v2 storage migration). Both modules
+are free of `chrome.*` so Node imports them directly.
+
+## Known limitation
+
+An extension cannot detect Windows Focus Assist or macOS Do Not Disturb. If Chrome
+accepts a test notification but nothing appears on screen, check those system
+settings — the extension says as much rather than reporting a success it cannot
+verify.
 
 ---
 

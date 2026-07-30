@@ -1,206 +1,703 @@
-document.addEventListener('DOMContentLoaded', async () => {
-  const intervalInput = document.getElementById('intervalInput');
-  const soundToggle = document.getElementById('soundToggle');
-  const persistentToggle = document.getElementById('persistentToggle');
-  const saveSettingsBtn = document.getElementById('saveSettingsBtn');
-  const dhikrListContainer = document.getElementById('dhikrList');
-  const addDhikrForm = document.getElementById('addDhikrForm');
-  const newDhikrInput = document.getElementById('newDhikrInput');
-  const listCount = document.getElementById('listCount');
-  const testNotificationBtn = document.getElementById('testNotificationBtn');
-  const masterToggle = document.getElementById('masterToggle');
-  const statusLabel = document.getElementById('statusLabel');
-  const statusSub = document.getElementById('statusSub');
-  const statusBar = document.getElementById('statusBar');
-  const langToggleBtnInline = document.getElementById('langToggleBtnInline');
+import {
+  getState, setState, subscribe, flush, countEnabled, makeId, DEFAULT_TEXTS,
+  MIN_INTERVAL, MAX_INTERVAL, MAX_DHIKR, MAX_DHIKR_LENGTH,
+} from './js/store.js';
+import { initLanguage, setLanguage, getLang, t, applyLanguage } from './js/i18n.js';
+import { describeNext, formatCountdown, parseHM } from './js/schedule.js';
+import { showToast, showUndo, mountToastHost } from './js/toast.js';
 
-  // Load language first
-  await loadLanguage();
+const PRESETS = [1, 5, 15, 30, 60];
+const ALARM_NAME = 'dhikrAlarm';
 
-  // Load current settings from storage
-  const data = await chrome.storage.sync.get(['isEnabled', 'intervalMinutes', 'dhikrList', 'playSound', 'requireInteraction']);
+const el = (id) => document.getElementById(id);
 
-  let currentDhikrList = data.dhikrList || [];
+const ui = {
+  status: el('status'),
+  statusLabel: el('statusLabel'),
+  statusSub: el('statusSub'),
+  statusA11y: el('statusA11y'),
+  master: el('masterToggle'),
+  segmented: el('intervalSegmented'),
+  custom: el('intervalCustom'),
+  intervalInput: el('intervalInput'),
+  intervalError: el('intervalError'),
+  windowToggle: el('windowToggle'),
+  windowBody: el('windowBody'),
+  windowStart: el('windowStart'),
+  windowEnd: el('windowEnd'),
+  windowFill: el('windowFill'),
+  windowHint: el('windowHint'),
+  sound: el('soundToggle'),
+  persistent: el('persistentToggle'),
+  testBtn: el('testBtn'),
+  testResult: el('testResult'),
+  testResultText: el('testResultText'),
+  healthBanner: el('healthBanner'),
+  healthBannerText: el('healthBannerText'),
+};
 
-  // Initialize UI
-  intervalInput.value = data.intervalMinutes || 1;
-  soundToggle.checked = data.playSound !== false;
-  persistentToggle.checked = data.requireInteraction === true;
-  masterToggle.checked = data.isEnabled !== false;
-  updateStatusUI(masterToggle.checked);
-  renderDhikrList();
+const listUi = {
+  root: el('dhikrList'),
+  count: el('listCount'),
+  warning: el('listWarning'),
+  warningText: el('listWarningText'),
+  form: el('addForm'),
+  input: el('addInput'),
+  error: el('addError'),
+  addCount: el('addCount'),
+  restore: el('restoreDefaultsBtn'),
+  exportBtn: el('exportBtn'),
+  importBtn: el('importBtn'),
+  importFile: el('importFile'),
+};
 
-  // Language toggle (both header and inline buttons)
-  function handleLangToggle() {
-    const newLang = getLang() === 'en' ? 'ar' : 'en';
-    setLanguage(newLang).then(() => {
-      updateStatusUI(masterToggle.checked);
-      renderDhikrList();
-    });
-  }
+const ICON = {
+  grip: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+};
 
-  langToggleBtnInline.addEventListener('click', handleLangToggle);
+let state = null;
+let scheduledTime = null;
+/** id of the row currently in edit mode, or null. */
+let editingId = null;
 
-  // Master Toggle
-  masterToggle.addEventListener('change', async (e) => {
-    const isEnabled = e.target.checked;
-    await chrome.storage.sync.set({ isEnabled });
-    updateStatusUI(isEnabled);
-    chrome.runtime.sendMessage({ action: "updateSettings" });
+function notifyBackground() {
+  chrome.runtime.sendMessage({ action: 'updateSettings' }, () => {
+    void chrome.runtime.lastError;          // no receiver is harmless here
+    refreshAlarm().then(paintStatus);
+  });
+}
+
+/* ═══════════ STATUS ═══════════ */
+
+async function refreshAlarm() {
+  const alarm = await chrome.alarms.get(ALARM_NAME);
+  scheduledTime = alarm ? alarm.scheduledTime : null;
+}
+
+function paintStatus() {
+  const next = describeNext({
+    isEnabled: state.isEnabled,
+    enabledCount: countEnabled(state),
+    activeWindow: state.activeWindow,
+    scheduledTime,
+    now: Date.now(),
   });
 
-  function updateStatusUI(isEnabled) {
-    if (isEnabled) {
-      statusLabel.textContent = t('statusActive');
-      statusSub.textContent = t('statusRunning');
-      statusBar.classList.add('active');
-      statusBar.classList.remove('paused');
-    } else {
-      statusLabel.textContent = t('statusPaused');
-      statusSub.textContent = t('statusOff');
-      statusBar.classList.remove('active');
-      statusBar.classList.add('paused');
+  const idle = next.kind === 'paused' || next.kind === 'empty';
+  ui.status.classList.toggle('paused', idle);
+  ui.statusLabel.textContent = next.kind === 'paused' ? t('statusPaused') : t('statusActive');
+
+  let sub;
+  if (next.kind === 'paused') sub = t('statusOff');
+  else if (next.kind === 'empty') sub = t('nothingEnabled');
+  else if (next.kind === 'outsideWindow') sub = t('resumesAt', next.resumesAt);
+  else sub = t('nextIn', formatCountdown(next.ms));
+
+  ui.statusSub.textContent = sub;
+  // Static for assistive tech — no per-second churn.
+  ui.statusA11y.textContent = next.kind === 'countdown'
+    ? `${ui.statusLabel.textContent}. ${state.intervalMinutes} ${t('intervalUnit')}.`
+    : `${ui.statusLabel.textContent}. ${sub}`;
+}
+
+ui.master.addEventListener('change', () => {
+  state.isEnabled = ui.master.checked;
+  setState({ isEnabled: state.isEnabled }, { immediate: true });
+  notifyBackground();
+  paintStatus();
+});
+
+/* ═══════════ INTERVAL ═══════════ */
+
+function buildSegmented() {
+  const buttons = PRESETS.map((minutes) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'seg-btn';
+    btn.setAttribute('role', 'radio');
+    btn.dataset.minutes = String(minutes);
+    btn.textContent = String(minutes);
+    btn.setAttribute('aria-label', `${minutes} ${t('intervalUnit')}`);
+    return btn;
+  });
+
+  const customBtn = document.createElement('button');
+  customBtn.type = 'button';
+  customBtn.className = 'seg-btn';
+  customBtn.setAttribute('role', 'radio');
+  customBtn.dataset.custom = 'true';
+  customBtn.textContent = t('intervalCustom');
+
+  ui.segmented.replaceChildren(...buttons, customBtn);
+}
+
+function paintInterval() {
+  const isPreset = PRESETS.includes(state.intervalMinutes);
+  for (const btn of ui.segmented.querySelectorAll('.seg-btn')) {
+    const selected = btn.dataset.custom
+      ? !isPreset
+      : Number(btn.dataset.minutes) === state.intervalMinutes;
+    btn.setAttribute('aria-checked', String(selected));
+    btn.tabIndex = selected ? 0 : -1;
+  }
+  ui.custom.hidden = isPreset;
+  ui.intervalInput.value = String(state.intervalMinutes);
+}
+
+function commitInterval(minutes) {
+  state.intervalMinutes = Math.min(MAX_INTERVAL, Math.max(MIN_INTERVAL, minutes));
+  setState({ intervalMinutes: state.intervalMinutes }, { immediate: true });
+  notifyBackground();
+  paintInterval();
+}
+
+ui.segmented.addEventListener('click', (e) => {
+  const btn = e.target.closest('.seg-btn');
+  if (!btn) return;
+  ui.intervalError.textContent = '';
+
+  if (btn.dataset.custom) {
+    // Reveal the number field but do not change the stored value yet.
+    ui.custom.hidden = false;
+    for (const b of ui.segmented.querySelectorAll('.seg-btn')) {
+      b.setAttribute('aria-checked', String(b === btn));
+      b.tabIndex = b === btn ? 0 : -1;
     }
+    ui.intervalInput.focus();
+    ui.intervalInput.select();
+    return;
   }
 
-  // Save Settings
-  saveSettingsBtn.addEventListener('click', async () => {
-    let newInterval = parseInt(intervalInput.value, 10);
-    if (isNaN(newInterval) || newInterval < 1) newInterval = 1;
-    intervalInput.value = newInterval;
+  commitInterval(Number(btn.dataset.minutes));
+});
 
-    await chrome.storage.sync.set({
-      intervalMinutes: newInterval,
-      playSound: soundToggle.checked,
-      requireInteraction: persistentToggle.checked
-    });
+ui.segmented.addEventListener('keydown', (e) => {
+  const steps = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
+  const step = steps[e.key];
+  if (!step) return;
+  e.preventDefault();
 
-    chrome.runtime.sendMessage({ action: "updateSettings" });
-    showToast(t('toastSaved'));
+  const buttons = [...ui.segmented.querySelectorAll('.seg-btn')];
+  const horizontal = e.key === 'ArrowRight' || e.key === 'ArrowLeft';
+  const rtl = document.documentElement.dir === 'rtl';
+  const delta = horizontal && rtl ? -step : step;
+
+  const current = Math.max(0, buttons.findIndex((b) => b.getAttribute('aria-checked') === 'true'));
+  const next = buttons[(current + delta + buttons.length) % buttons.length];
+  next.click();
+  next.focus();
+});
+
+// Typing is the one place digits are entered, so this debounces.
+ui.intervalInput.addEventListener('input', () => {
+  const raw = ui.intervalInput.value.trim();
+  const n = Number(raw);
+  const valid = raw !== '' && Number.isFinite(n) && n >= MIN_INTERVAL && n <= MAX_INTERVAL;
+
+  ui.intervalInput.classList.toggle('invalid', !valid);
+  ui.intervalError.textContent = valid ? '' : t('intervalRange', MIN_INTERVAL, MAX_INTERVAL);
+  if (!valid) return;                       // keep the last valid stored value
+
+  state.intervalMinutes = Math.trunc(n);
+  setState({ intervalMinutes: state.intervalMinutes });   // debounced 400ms
+  notifyBackground();
+});
+
+// Snap back to the stored value if the user leaves the field invalid.
+ui.intervalInput.addEventListener('blur', () => {
+  ui.intervalInput.classList.remove('invalid');
+  ui.intervalError.textContent = '';
+  ui.intervalInput.value = String(state.intervalMinutes);
+});
+
+/* ═══════════ ACTIVE WINDOW ═══════════ */
+
+function paintWindow() {
+  const { enabled, start, end } = state.activeWindow;
+  ui.windowToggle.checked = enabled;
+  ui.windowBody.hidden = !enabled;
+  ui.windowStart.value = start;
+  ui.windowEnd.value = end;
+
+  const s = parseHM(start);
+  const e = parseHM(end);
+  if (s === null || e === null) return;
+
+  const pct = (m) => `${(m / 1440) * 100}%`;
+
+  if (s === e) {
+    ui.windowFill.style.insetInlineStart = '0';
+    ui.windowFill.style.inlineSize = '100%';
+    ui.windowHint.textContent = t('windowAllDay');
+  } else if (s < e) {
+    ui.windowFill.style.insetInlineStart = pct(s);
+    ui.windowFill.style.inlineSize = pct(e - s);
+    ui.windowHint.textContent = '';
+  } else {
+    // Overnight: draw start → midnight; the wrap is explained in the hint.
+    ui.windowFill.style.insetInlineStart = pct(s);
+    ui.windowFill.style.inlineSize = pct(1440 - s);
+    ui.windowHint.textContent = t('windowOvernight');
+  }
+}
+
+ui.windowToggle.addEventListener('change', () => {
+  state.activeWindow = { ...state.activeWindow, enabled: ui.windowToggle.checked };
+  setState({ activeWindow: state.activeWindow }, { immediate: true });
+  paintWindow();
+  paintStatus();
+});
+
+for (const [input, key] of [[ui.windowStart, 'start'], [ui.windowEnd, 'end']]) {
+  input.addEventListener('change', () => {
+    if (parseHM(input.value) === null) {
+      input.value = state.activeWindow[key];
+      showToast(t('errBadTime'));
+      return;
+    }
+    state.activeWindow = { ...state.activeWindow, [key]: input.value };
+    setState({ activeWindow: state.activeWindow }, { immediate: true });
+    paintWindow();
+    paintStatus();
   });
+}
 
-  // Add Dhikr
-  addDhikrForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const newText = newDhikrInput.value.trim();
-    if (!newText) return;
+/* ═══════════ NOTIFICATIONS ═══════════ */
 
-    currentDhikrList.push(newText);
-    await updateDhikrStorage();
-    newDhikrInput.value = '';
-    renderDhikrList();
-    showToast(t('toastAdded'));
-  });
+ui.sound.addEventListener('change', () => {
+  state.playSound = ui.sound.checked;
+  setState({ playSound: state.playSound }, { immediate: true });
+  showToast(t('toastSaved'));
+});
 
-  // Render list
-  function renderDhikrList() {
-    dhikrListContainer.innerHTML = '';
+ui.persistent.addEventListener('change', () => {
+  state.requireInteraction = ui.persistent.checked;
+  setState({ requireInteraction: state.requireInteraction }, { immediate: true });
+  showToast(t('toastSaved'));
+});
 
-    if (currentDhikrList.length === 0) {
-      dhikrListContainer.innerHTML = `<li class="empty-state">${t('emptyList')}</li>`;
+async function checkHealth() {
+  const level = await new Promise((resolve) => chrome.notifications.getPermissionLevel(resolve));
+  const blocked = level === 'denied';
+  ui.healthBanner.hidden = !blocked;
+  if (blocked) ui.healthBannerText.textContent = t('healthBlocked');
+}
+
+ui.testBtn.addEventListener('click', () => {
+  chrome.runtime.sendMessage({ action: 'testNotification' }, (response) => {
+    ui.testResult.hidden = false;
+
+    if (chrome.runtime.lastError || response?.error) {
+      ui.testResult.className = 'banner error';
+      ui.testResultText.textContent =
+        `${t('toastError')}: ${chrome.runtime.lastError?.message ?? response.error}`;
+      return;
     }
 
-    currentDhikrList.forEach((dhikr, index) => {
-      const li = document.createElement('li');
-      li.className = 'dhikr-item';
-
-      const span = document.createElement('span');
-      span.className = 'dhikr-text';
-      span.textContent = dhikr;
-
-      const actionsDiv = document.createElement('div');
-      actionsDiv.className = 'dhikr-actions';
-
-      // Edit button
-      const editBtn = document.createElement('button');
-      editBtn.className = 'btn-icon';
-      editBtn.title = 'Edit';
-      editBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>';
-      editBtn.onclick = () => handleEdit(li, index);
-
-      // Delete button
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'btn-icon delete';
-      deleteBtn.title = 'Delete';
-      deleteBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>';
-      deleteBtn.onclick = () => handleDelete(index);
-
-      actionsDiv.appendChild(editBtn);
-      actionsDiv.appendChild(deleteBtn);
-
-      li.appendChild(actionsDiv);
-      li.appendChild(span);
-
-      dhikrListContainer.appendChild(li);
-    });
-
-    listCount.textContent = currentDhikrList.length;
-  }
-
-  // Inline edit
-  function handleEdit(li, index) {
-    if (li.classList.contains('editing')) return;
-
-    li.classList.add('editing');
-    const textSpan = li.querySelector('.dhikr-text');
-    const currentText = textSpan.textContent;
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'edit-input';
-    input.value = currentText;
-
-    textSpan.replaceWith(input);
-    input.focus();
-    input.select();
-
-    const save = async () => {
-      const newText = input.value.trim();
-      if (newText && newText !== currentText) {
-        currentDhikrList[index] = newText;
-        await updateDhikrStorage();
-        showToast(t('toastUpdated'));
-      }
-      renderDhikrList();
-    };
-
-    input.addEventListener('blur', save);
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-      if (e.key === 'Escape') { input.value = currentText; input.blur(); }
-    });
-  }
-
-  function handleDelete(index) {
-    currentDhikrList.splice(index, 1);
-    updateDhikrStorage().then(() => {
-      renderDhikrList();
-      showToast(t('toastDeleted'));
-    });
-  }
-
-  function updateDhikrStorage() {
-    return chrome.storage.sync.set({ dhikrList: currentDhikrList });
-  }
-
-  // Toast
-  function showToast(message) {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 2000);
-  }
-
-  // Test Notification
-  testNotificationBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: "testNotification" }, (response) => {
-      if (chrome.runtime.lastError) {
-        showToast(t('toastError') + ": " + chrome.runtime.lastError.message);
-      } else if (response && response.error) {
-        showToast(t('toastError') + ": check icon-48.png");
-      } else {
-        showToast(t('toastTestSent'));
-      }
-    });
+    // Chrome accepted it. We cannot detect OS-level DND, so say so plainly
+    // rather than claiming a success the user may not have seen.
+    ui.testResult.className = 'banner';
+    ui.testResultText.textContent = t('healthNoShow');
+    showToast(t('toastTestSent'));
   });
 });
+
+/* ═══════════ LANGUAGE ═══════════ */
+
+for (const btn of document.querySelectorAll('[data-lang-switch]')) {
+  btn.addEventListener('click', async () => {
+    await setLanguage(getLang() === 'en' ? 'ar' : 'en');
+    repaintAll();
+  });
+}
+
+/* ═══════════ DHIKR LIST ═══════════ */
+
+/** The single write path for every list mutation. */
+function commitList(nextList, toastKey) {
+  state.dhikrList = nextList;
+  setState({ dhikrList: nextList }, { immediate: true });
+  renderList();
+  paintStatus();
+  if (toastKey) showToast(t(toastKey));
+}
+
+function paintListMeta() {
+  listUi.count.textContent = String(state.dhikrList.length);
+  listUi.addCount.textContent = t('counter', state.dhikrList.length, MAX_DHIKR);
+
+  // Surface the configurations that produce no notifications at all.
+  // background.js used to hit these cases and silently do nothing.
+  let warning = '';
+  if (state.dhikrList.length === 0) warning = t('listEmptyWarning');
+  else if (countEnabled(state) === 0) warning = t('listNoneEnabledWarning');
+
+  listUi.warning.hidden = !warning;
+  listUi.warningText.textContent = warning;
+}
+
+/** Swap an item with its neighbour. Returns false at the ends. */
+function move(id, delta) {
+  const from = state.dhikrList.findIndex((d) => d.id === id);
+  const to = from + delta;
+  if (from < 0 || to < 0 || to >= state.dhikrList.length) return false;
+  const next = [...state.dhikrList];
+  [next[from], next[to]] = [next[to], next[from]];
+  commitList(next, 'toastReordered');
+  return true;
+}
+
+function buildRow(item) {
+  const li = document.createElement('li');
+  li.className = 'item';
+  li.dataset.id = item.id;
+  li.draggable = true;
+  if (!item.enabled) li.classList.add('disabled');
+
+  const grip = document.createElement('span');
+  grip.className = 'item-grip';
+  grip.innerHTML = ICON.grip;
+  grip.tabIndex = 0;
+  grip.setAttribute('role', 'button');
+  grip.setAttribute('aria-label', t('reorderAria', item.text));
+
+  const toggleLabel = document.createElement('label');
+  toggleLabel.className = 'toggle sm';
+  const toggle = document.createElement('input');
+  toggle.type = 'checkbox';
+  toggle.className = 'toggle-input';
+  toggle.checked = item.enabled;
+  toggle.setAttribute('aria-label', t('enableAria', item.text));
+  const track = document.createElement('span');
+  track.className = 'toggle-track';
+  toggleLabel.append(toggle, track);
+
+  const text = document.createElement('span');
+  text.className = 'item-text';
+  text.textContent = item.text;
+
+  const actions = document.createElement('span');
+  actions.className = 'item-actions';
+
+  const editBtn = document.createElement('button');
+  editBtn.type = 'button';
+  editBtn.className = 'btn-icon';
+  editBtn.innerHTML = ICON.edit;
+  editBtn.setAttribute('aria-label', t('editAria', item.text));
+
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.className = 'btn-icon danger';
+  delBtn.innerHTML = ICON.trash;
+  delBtn.setAttribute('aria-label', t('deleteAria', item.text));
+
+  actions.append(editBtn, delBtn);
+  li.append(grip, toggleLabel, text, actions);
+
+  toggle.addEventListener('change', () => {
+    commitList(state.dhikrList.map((d) => (
+      d.id === item.id ? { ...d, enabled: toggle.checked } : d
+    )));
+  });
+
+  editBtn.addEventListener('click', () => startEdit(item.id));
+  delBtn.addEventListener('click', () => deleteItem(item.id));
+
+  // Keyboard path for drag, which is otherwise mouse-only.
+  grip.addEventListener('keydown', (e) => {
+    if (!e.altKey) return;
+    const delta = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0;
+    if (!delta) return;
+    e.preventDefault();
+    if (move(item.id, delta)) {
+      listUi.root.querySelector(`[data-id="${item.id}"] .item-grip`)?.focus();
+    }
+  });
+
+  return li;
+}
+
+function renderList() {
+  if (!state) return;
+
+  if (state.dhikrList.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = t('emptyList');
+    listUi.root.replaceChildren(li);
+  } else {
+    listUi.root.replaceChildren(...state.dhikrList.map(buildRow));
+  }
+
+  paintListMeta();
+}
+
+/* ═══════════ EDIT ═══════════ */
+
+/** Explicit Save/Cancel — blur-save misfired when clicking another row. */
+function startEdit(id) {
+  if (editingId) return;
+  const li = listUi.root.querySelector(`[data-id="${id}"]`);
+  const item = state.dhikrList.find((d) => d.id === id);
+  if (!li || !item) return;
+
+  editingId = id;
+  li.classList.add('editing');
+
+  const row = document.createElement('span');
+  row.className = 'edit-row';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'field field-arabic';
+  input.value = item.text;
+  input.maxLength = MAX_DHIKR_LENGTH;
+
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.className = 'btn-icon';
+  saveBtn.innerHTML = ICON.check;
+  saveBtn.setAttribute('aria-label', t('saveEdit'));
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'btn-icon';
+  cancelBtn.innerHTML = ICON.close;
+  cancelBtn.setAttribute('aria-label', t('cancelEdit'));
+
+  row.append(input, saveBtn, cancelBtn);
+  li.querySelector('.item-text').replaceWith(row);
+  li.querySelector('.item-actions').remove();
+
+  input.focus();
+  input.select();
+
+  const finish = () => { editingId = null; renderList(); };
+
+  const commit = () => {
+    const text = input.value.trim();
+    if (!text || text === item.text) { finish(); return; }
+    if (state.dhikrList.some((d) => d.id !== id && d.text === text)) {
+      showToast(t('errDuplicate'));
+      input.focus();
+      return;
+    }
+    editingId = null;
+    commitList(
+      state.dhikrList.map((d) => (d.id === id ? { ...d, text } : d)),
+      'toastUpdated',
+    );
+  };
+
+  saveBtn.addEventListener('click', commit);
+  cancelBtn.addEventListener('click', finish);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') { e.preventDefault(); finish(); }
+  });
+}
+
+/* ═══════════ DELETE + UNDO ═══════════ */
+
+function deleteItem(id) {
+  const index = state.dhikrList.findIndex((d) => d.id === id);
+  if (index < 0) return;
+  const removed = state.dhikrList[index];
+
+  commitList(state.dhikrList.filter((d) => d.id !== id));
+
+  showUndo(t('toastDeleted'), () => {
+    const restored = [...state.dhikrList];
+    restored.splice(Math.min(index, restored.length), 0, removed);
+    commitList(restored, 'toastRestored');
+  });
+}
+
+/* ═══════════ ADD ═══════════ */
+
+function validateNew(text) {
+  if (!text) return t('errEmpty');
+  if (text.length > MAX_DHIKR_LENGTH) return t('errTooLong', MAX_DHIKR_LENGTH);
+  if (state.dhikrList.length >= MAX_DHIKR) return t('errFull', MAX_DHIKR);
+  if (state.dhikrList.some((d) => d.text === text)) return t('errDuplicate');
+  return '';
+}
+
+listUi.form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = listUi.input.value.trim();
+  const error = validateNew(text);
+
+  listUi.error.textContent = error;
+  listUi.input.classList.toggle('invalid', Boolean(error));
+  if (error) { listUi.input.focus(); return; }
+
+  commitList([...state.dhikrList, { id: makeId(), text, enabled: true }], 'toastAdded');
+  listUi.input.value = '';
+  listUi.input.focus();
+});
+
+listUi.input.addEventListener('input', () => {
+  listUi.error.textContent = '';
+  listUi.input.classList.remove('invalid');
+});
+
+/* ═══════════ DRAG TO REORDER ═══════════ */
+
+let dragId = null;
+
+listUi.root.addEventListener('dragstart', (e) => {
+  const li = e.target.closest('.item');
+  if (!li) return;
+  dragId = li.dataset.id;
+  li.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', dragId);
+});
+
+listUi.root.addEventListener('dragover', (e) => {
+  const li = e.target.closest('.item');
+  if (!li || !dragId || li.dataset.id === dragId) return;
+  e.preventDefault();
+  li.classList.add('drag-over');
+});
+
+listUi.root.addEventListener('dragleave', (e) => {
+  e.target.closest('.item')?.classList.remove('drag-over');
+});
+
+listUi.root.addEventListener('drop', (e) => {
+  const li = e.target.closest('.item');
+  if (!li || !dragId) return;
+  e.preventDefault();
+
+  const from = state.dhikrList.findIndex((d) => d.id === dragId);
+  const to = state.dhikrList.findIndex((d) => d.id === li.dataset.id);
+  dragId = null;
+  if (from < 0 || to < 0 || from === to) { renderList(); return; }
+
+  const next = [...state.dhikrList];
+  next.splice(to, 0, next.splice(from, 1)[0]);
+  commitList(next, 'toastReordered');
+});
+
+listUi.root.addEventListener('dragend', () => {
+  dragId = null;
+  renderList();
+});
+
+/* ═══════════ RESTORE DEFAULTS ═══════════ */
+
+listUi.restore.addEventListener('click', () => {
+  const have = new Set(state.dhikrList.map((d) => d.text));
+  const missing = DEFAULT_TEXTS.filter((text) => !have.has(text));
+
+  if (!missing.length) { showToast(t('toastNothingToRestore')); return; }
+
+  const room = MAX_DHIKR - state.dhikrList.length;
+  if (room <= 0) { showToast(t('errFull', MAX_DHIKR)); return; }
+
+  const added = missing.slice(0, room).map((text) => ({ id: makeId(), text, enabled: true }));
+  const before = state.dhikrList;
+
+  // Adds only what is missing — never wipes the user's own entries.
+  commitList([...before, ...added]);
+  showUndo(t('toastDefaultsRestored', added.length), () => commitList(before, 'toastRestored'));
+});
+
+/* ═══════════ EXPORT / IMPORT ═══════════ */
+
+listUi.exportBtn.addEventListener('click', () => {
+  const body = state.dhikrList.map((d) => d.text).join('\n');
+  const url = URL.createObjectURL(new Blob([body], { type: 'text/plain;charset=utf-8' }));
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'dhikr-list.txt';
+  a.click();
+
+  URL.revokeObjectURL(url);
+  showToast(t('toastExported'));
+});
+
+listUi.importBtn.addEventListener('click', () => listUi.importFile.click());
+
+listUi.importFile.addEventListener('change', async () => {
+  const file = listUi.importFile.files?.[0];
+  listUi.importFile.value = '';            // allow re-importing the same file
+  if (!file) return;
+
+  let text;
+  try {
+    text = await file.text();
+  } catch (err) {
+    showToast(`${t('toastError')}: ${err.message}`);
+    return;
+  }
+
+  const have = new Set(state.dhikrList.map((d) => d.text));
+  const before = state.dhikrList;
+  const added = [];
+
+  for (const raw of text.split(/\r?\n/)) {
+    if (before.length + added.length >= MAX_DHIKR) break;
+    const line = raw.trim().slice(0, MAX_DHIKR_LENGTH);
+    if (!line || have.has(line)) continue;  // merge, skipping duplicates
+    have.add(line);
+    added.push({ id: makeId(), text: line, enabled: true });
+  }
+
+  if (!added.length) { showToast(t('toastNothingToRestore')); return; }
+
+  commitList([...before, ...added]);
+  showUndo(t('toastImported', added.length), () => commitList(before, 'toastRestored'));
+});
+
+/* ═══════════ INIT ═══════════ */
+
+function repaintAll() {
+  applyLanguage();
+  buildSegmented();
+  paintInterval();
+  paintWindow();
+  paintStatus();
+  renderList();
+}
+
+async function init() {
+  mountToastHost();
+  await initLanguage();
+  state = await getState();
+  await refreshAlarm();
+
+  ui.master.checked = state.isEnabled;
+  ui.sound.checked = state.playSound;
+  ui.persistent.checked = state.requireInteraction;
+
+  repaintAll();
+  await checkHealth();
+
+  window.setInterval(paintStatus, 1000);
+
+  subscribe(async (next) => {
+    // Storage changed elsewhere — the popup, or another device.
+    if (editingId) return;                  // don't yank the row being edited
+    state = next;
+    await refreshAlarm();
+    ui.master.checked = state.isEnabled;
+    ui.sound.checked = state.playSound;
+    ui.persistent.checked = state.requireInteraction;
+    paintInterval();
+    paintWindow();
+    paintStatus();
+    renderList();
+  });
+}
+
+window.addEventListener('pagehide', flush);
+
+init();

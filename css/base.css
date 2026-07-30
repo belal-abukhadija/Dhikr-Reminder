@@ -1,0 +1,149 @@
+/* ═══════════ FONTS (vendored — the previous @import was blocked by MV3 CSP) ═══════════ */
+@font-face {
+  font-family: 'Amiri';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/amiri-400-arabic.woff2') format('woff2');
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
+}
+@font-face {
+  font-family: 'Amiri';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/amiri-400-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+2000-206F, U+2192, U+2212;
+}
+@font-face {
+  font-family: 'Amiri';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/amiri-700-arabic.woff2') format('woff2');
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
+}
+@font-face {
+  font-family: 'Amiri';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/amiri-700-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+2000-206F, U+2192, U+2212;
+}
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 400 700;              /* variable font, single file */
+  font-display: swap;
+  src: url('../fonts/outfit-var-latin.woff2') format('woff2');
+}
+
+/* ═══════════ TOKENS ═══════════ */
+:root {
+  /* Surfaces */
+  --bg-deep: #0B1D1A;
+  --bg-card: #122B26;
+  --bg-card-hover: #163832;
+  --bg-input: #0E2420;
+
+  /* Gold — active state and interactive affordances ONLY, never decorative */
+  --gold: #D4A853;
+  --gold-dim: #B8923F;
+  --gold-glow: rgba(212, 168, 83, 0.15);
+  --gold-glow-strong: rgba(212, 168, 83, 0.25);
+
+  --teal: #2DD4A8;
+
+  --text-primary: #E8E4DC;
+  --text-secondary: #8A9B96;
+  --text-arabic: #F0E6D3;
+
+  --border: rgba(212, 168, 83, 0.12);
+  --border-active: rgba(212, 168, 83, 0.35);
+  --hairline: rgba(255, 255, 255, 0.04);
+
+  --danger: #E05A5A;
+  --danger-bg: rgba(224, 90, 90, 0.12);
+
+  /* Type scale — px only. The old `html { font-size: 14px }` is gone. */
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 28px;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --radius: 14px;
+  --radius-sm: 10px;
+  --radius-pill: 999px;
+
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --ring: 0 0 0 3px var(--gold-glow-strong);
+
+  --font-ui: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-arabic: 'Amiri', 'Traditional Arabic', serif;
+
+  /* Inline-axis sign, so `translate` can be written direction-agnostically. */
+  --flip: 1;
+}
+
+html[dir='rtl'] { --flip: -1; }
+
+/* ═══════════ RESET ═══════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: none; }
+ul, ol { list-style: none; }
+h1, h2 { font-weight: inherit; font-size: inherit; }
+
+/* One focus treatment for everything. */
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* ═══════════ SCROLLBAR ═══════════ */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-pill); }
+::-webkit-scrollbar-thumb:hover { background: var(--border-active); }
+
+/* ═══════════ UTILITIES ═══════════ */
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ═══════════ REDUCED MOTION ═══════════ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

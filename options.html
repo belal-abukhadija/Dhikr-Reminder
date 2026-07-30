@@ -3,129 +3,214 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dhikr Reminder</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>Dhikr Reminder — Settings</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/options.css">
 </head>
 <body>
-  <div class="container">
+  <div class="page">
 
-    <!-- Hero Header -->
-    <div class="header-hero">
-      <div class="header-top">
-        <div class="header-icon">
+    <header class="page-header">
+      <div class="page-header-left">
+        <div class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
           </svg>
         </div>
         <div>
-          <span class="header-title" data-i18n="headerTitle">Dhikr Reminder</span>
+          <h1 class="brand-title" data-i18n="headerTitle">Dhikr Reminder</h1>
+          <p class="brand-subtitle" data-i18n="headerSubtitle">Keep your tongue moist with Allah’s remembrance.</p>
         </div>
       </div>
-      <div class="header-subtitle" data-i18n="headerSubtitle">Keep your tongue moist with Allah’s remembrance.</div>
+      <button type="button" class="lang-switch" data-lang-switch>عربي</button>
+    </header>
+
+    <div class="banner error" id="healthBanner" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+      </svg>
+      <span id="healthBannerText"></span>
     </div>
 
-    <div class="main-content">
-
-      <!-- Status Toggle -->
-      <div class="status-bar active" id="statusBar">
-        <div class="status-left">
-          <div class="status-dot"></div>
-          <div>
-            <div class="status-label" id="statusLabel" data-i18n="statusActive">Active</div>
-            <div class="status-sub" id="statusSub" data-i18n="statusRunning">Reminders are running</div>
-          </div>
+    <div class="status page-status" id="status">
+      <div class="status-left">
+        <span class="status-dot" aria-hidden="true"></span>
+        <div>
+          <div class="status-label" id="statusLabel">Active</div>
+          <div class="status-sub" id="statusSub" aria-hidden="true"></div>
+          <span class="visually-hidden" id="statusA11y"></span>
         </div>
-        <label class="toggle">
-          <input type="checkbox" id="masterToggle">
-          <span class="toggle-track"></span>
-        </label>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" class="toggle-input" id="masterToggle" data-i18n-aria="remindersOn">
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+
+    <div class="columns">
+
+      <!-- ═══════════ LEFT COLUMN ═══════════ -->
+      <div class="column">
+
+        <section class="card">
+          <div class="card-head"><h2 class="card-title" data-i18n="sectionReminders">Reminders</h2></div>
+          <div class="card-body">
+
+            <div class="row row-stacked">
+              <div class="row-info">
+                <div class="row-label" id="intervalLabel" data-i18n="remindEvery">Remind me every</div>
+              </div>
+              <div class="interval-block">
+                <div class="segmented" id="intervalSegmented" role="radiogroup" aria-labelledby="intervalLabel"></div>
+                <div class="interval-custom" id="intervalCustom" hidden>
+                  <input type="number" class="field field-num" id="intervalInput" min="1" max="1440" step="1"
+                         data-i18n-aria="intervalCustomLabel">
+                  <span class="field-count" data-i18n="intervalUnit">min</span>
+                </div>
+                <p class="field-error" id="intervalError" role="alert"></p>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="row-info">
+                <div class="row-label" data-i18n="activeWindow">Active window</div>
+                <div class="row-desc" data-i18n="activeWindowDesc">Only remind me during these hours</div>
+              </div>
+              <div class="row-control">
+                <label class="toggle">
+                  <input type="checkbox" class="toggle-input" id="windowToggle" data-i18n-aria="activeWindow">
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="row row-stacked window-body" id="windowBody" hidden>
+              <div class="window-fields">
+                <label for="windowStart" data-i18n="windowFrom">From</label>
+                <input type="time" class="field field-time" id="windowStart">
+                <label for="windowEnd" data-i18n="windowTo">To</label>
+                <input type="time" class="field field-time" id="windowEnd">
+              </div>
+              <div>
+                <div class="window-track" aria-hidden="true"><span class="window-fill" id="windowFill"></span></div>
+                <div class="window-scale" aria-hidden="true">
+                  <span>00</span><span>06</span><span>12</span><span>18</span><span>24</span>
+                </div>
+              </div>
+              <p class="window-hint" id="windowHint"></p>
+            </div>
+
+          </div>
+          <p class="note" data-i18n="settingNote">Chrome limits background alarms to a minimum of 1 minute.</p>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2 class="card-title" data-i18n="sectionNotifications">Notifications</h2></div>
+          <div class="card-body">
+
+            <div class="row">
+              <div class="row-info">
+                <div class="row-label" data-i18n="playSound">Play sound</div>
+                <div class="row-desc" data-i18n="playSoundDesc">System notification chime</div>
+              </div>
+              <div class="row-control">
+                <label class="toggle">
+                  <input type="checkbox" class="toggle-input" id="soundToggle" data-i18n-aria="playSound">
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="row-info">
+                <div class="row-label" data-i18n="persistentAlert">Persistent alert</div>
+                <div class="row-desc" data-i18n="persistentAlertDesc">Stays on screen until dismissed</div>
+              </div>
+              <div class="row-control">
+                <label class="toggle">
+                  <input type="checkbox" class="toggle-input" id="persistentToggle" data-i18n-aria="persistentAlert">
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="row-info">
+                <div class="row-label" data-i18n="language">Language</div>
+                <div class="row-desc" data-i18n="languageDesc">Switch interface language</div>
+              </div>
+              <div class="row-control">
+                <button type="button" class="lang-switch" data-lang-switch>عربي</button>
+              </div>
+            </div>
+
+            <div class="row row-stacked">
+              <button type="button" class="btn btn-dashed" id="testBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <span data-i18n="sendTest">Send test notification</span>
+              </button>
+              <div class="banner" id="testResult" hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+                </svg>
+                <span id="testResultText"></span>
+              </div>
+            </div>
+
+          </div>
+        </section>
       </div>
 
-      <!-- Settings Section -->
-      <div class="section">
-        <div class="section-header">
-          <span class="section-title" data-i18n="sectionSettings">Settings</span>
-        </div>
-
-        <div class="setting-row">
-          <div class="setting-info">
-            <div class="setting-label" data-i18n="remindEvery">Remind me every</div>
+      <!-- ═══════════ RIGHT COLUMN ═══════════ -->
+      <div class="column">
+        <section class="card list-card">
+          <div class="card-head">
+            <h2 class="card-title" data-i18n="sectionDhikrList">My Dhikr List</h2>
+            <span class="card-badge" id="listCount">0</span>
           </div>
-          <div class="interval-group">
-            <input type="number" id="intervalInput" class="interval-input" min="1" value="5">
-            <span class="interval-unit" data-i18n="intervalUnit">min</span>
-          </div>
-        </div>
 
-        <div class="setting-row">
-          <div class="setting-info">
-            <div class="setting-label" data-i18n="playSound">Play Sound</div>
-            <div class="setting-desc" data-i18n="playSoundDesc">System notification chime</div>
+          <div class="card-body">
+            <div class="banner warn" id="listWarning" hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <path d="M12 9v4"/><path d="M12 17h.01"/>
+              </svg>
+              <span id="listWarningText"></span>
+            </div>
+            <div class="list-scroll">
+              <ul id="dhikrList"></ul>
+            </div>
           </div>
-          <label class="toggle">
-            <input type="checkbox" id="soundToggle" checked>
-            <span class="toggle-track"></span>
-          </label>
-        </div>
 
-        <div class="setting-row">
-          <div class="setting-info">
-            <div class="setting-label" data-i18n="persistentAlert">Persistent Alert</div>
-            <div class="setting-desc" data-i18n="persistentAlertDesc">Stays until dismissed</div>
+          <form class="add-form" id="addForm">
+            <input type="text" class="field field-arabic" id="addInput" maxlength="200" required
+                   data-i18n-placeholder="addPlaceholder" placeholder="Add a new dhikr">
+            <button type="submit" class="btn btn-quiet"><span data-i18n="addBtn">Add</span></button>
+          </form>
+          <div class="add-meta">
+            <p class="field-error" id="addError" role="alert"></p>
+            <span class="field-count" id="addCount"></span>
           </div>
-          <label class="toggle">
-            <input type="checkbox" id="persistentToggle">
-            <span class="toggle-track"></span>
-          </label>
-        </div>
 
-        <div class="setting-row">
-          <div class="setting-info">
-            <div class="setting-label" data-i18n="language">Language</div>
-            <div class="setting-desc" data-i18n="languageDesc">Switch interface language</div>
+          <div class="list-footer">
+            <button type="button" class="btn-link" id="restoreDefaultsBtn" data-i18n="restoreDefaults">Restore defaults</button>
+            <div class="list-footer-group">
+              <button type="button" class="btn-link" id="exportBtn" data-i18n="exportList">Export</button>
+              <button type="button" class="btn-link" id="importBtn" data-i18n="importList">Import</button>
+              <input type="file" id="importFile" accept=".txt,text/plain" class="visually-hidden">
+            </div>
           </div>
-          <button class="lang-toggle-inline" id="langToggleBtnInline">عربي</button>
-        </div>
-
-        <button id="saveSettingsBtn" class="btn-save">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-          <span data-i18n="saveSettings">Save Settings</span>
-        </button>
-        <div class="setting-note" data-i18n="settingNote">Chrome limits background alarms to a minimum of 1 minute.</div>
+        </section>
       </div>
-
-      <!-- Dhikr List Section -->
-      <div class="section">
-        <div class="section-header">
-          <span class="section-title" data-i18n="sectionDhikrList">My Dhikr List</span>
-          <span class="section-badge" id="listCount">0</span>
-        </div>
-
-        <ul id="dhikrList" class="dhikr-list"></ul>
-
-        <form class="add-form" id="addDhikrForm">
-          <input type="text" id="newDhikrInput" class="add-input" data-i18n-placeholder="addPlaceholder" placeholder="Add a new dhikr" required>
-          <button type="submit" class="btn-add" data-i18n="addBtn">+ Add</button>
-        </form>
-      </div>
-
-      <!-- Test Notification -->
-      <button id="testNotificationBtn" class="btn-test">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-        </svg>
-        <span data-i18n="testNotification">Send Test Notification</span>
-      </button>
 
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
-  <script src="i18n.js"></script>
-  <script src="options.js"></script>
+  <script type="module" src="options.js"></script>
 </body>
 </html>

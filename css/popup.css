@@ -1,0 +1,46 @@
+body { width: 320px; }
+
+.popup-header {
+  padding: var(--space-6) var(--space-4) var(--space-4);
+  background: linear-gradient(160deg, #0F2D27 0%, #163832 40%, #1A4038 100%);
+  border-bottom: 1px solid var(--border);
+}
+
+.popup-header-top { display: flex; align-items: center; gap: var(--space-3); }
+
+.brand-mark {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.brand-mark svg { width: 21px; height: 21px; color: var(--bg-deep); }
+
+.brand-title { font-size: var(--text-xl); font-weight: 700; letter-spacing: -0.02em; }
+
+.popup-subtitle {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: var(--space-2);
+}
+
+.popup-body {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.popup-interval { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.popup-interval-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+}
+
+.popup-body .btn { width: 100%; }

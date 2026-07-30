@@ -2,53 +2,57 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dhikr Reminder</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/popup.css">
 </head>
-<body class="popup">
-  <div class="container">
-
-    <div class="header-hero">
-      <div class="header-top">
-        <div class="header-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-          </svg>
-        </div>
-        <div>
-          <span class="header-title" data-i18n="headerTitle">Dhikr Reminder</span>
-        </div>
-      </div>
-      <div class="header-subtitle" data-i18n="headerSubtitle">Keep your tongue moist with Allah’s remembrance.</div>
-    </div>
-
-    <div class="main-content">
-      <div class="status-bar active" id="statusBar">
-        <div class="status-left">
-          <div class="status-dot"></div>
-          <div>
-            <div class="status-label" id="statusLabel" data-i18n="statusActive">Active</div>
-            <div class="status-sub" id="intervalLabel">Every 5 mins</div>
-          </div>
-        </div>
-        <label class="toggle">
-          <input type="checkbox" id="toggleSwitch">
-          <span class="toggle-track"></span>
-        </label>
-      </div>
-
-      <button id="optionsBtn" class="btn-save" style="width: 100%; margin: 0;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;">
-          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+<body>
+  <header class="popup-header">
+    <div class="popup-header-top">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
         </svg>
-        <span data-i18n="settingsBtn">Settings & Customization</span>
-      </button>
+      </div>
+      <h1 class="brand-title" data-i18n="headerTitle">Dhikr Reminder</h1>
     </div>
-  </div>
+    <p class="popup-subtitle" data-i18n="headerSubtitle">Keep your tongue moist with Allah’s remembrance.</p>
+  </header>
 
-  <script src="i18n.js"></script>
-  <script src="popup.js"></script>
+  <main class="popup-body">
+    <div class="status" id="status">
+      <div class="status-left">
+        <span class="status-dot" aria-hidden="true"></span>
+        <div>
+          <div class="status-label" id="statusLabel">Active</div>
+          <!-- aria-hidden: a live region ticking every second is hostile to a
+               screen reader. statusA11y carries the static description. -->
+          <div class="status-sub" id="statusSub" aria-hidden="true"></div>
+          <span class="visually-hidden" id="statusA11y"></span>
+        </div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" class="toggle-input" id="masterToggle" data-i18n-aria="remindersOn">
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+
+    <div class="popup-interval">
+      <span class="popup-interval-label" id="quickIntervalLabel" data-i18n="quickInterval">Reminder interval</span>
+      <div class="segmented" id="intervalSegmented" role="radiogroup" aria-labelledby="quickIntervalLabel"></div>
+    </div>
+
+    <button type="button" class="btn btn-primary" id="openSettingsBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      <span data-i18n="openSettings">Settings &amp; Customization</span>
+    </button>
+  </main>
+
+  <script type="module" src="popup.js"></script>
 </body>
 </html>

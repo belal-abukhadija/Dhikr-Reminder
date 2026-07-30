@@ -1,91 +1,91 @@
-// Default settings
-const DEFAULT_SETTINGS = {
-  isEnabled: true,
-  intervalMinutes: 1,
-  playSound: true,
-  requireInteraction: false,
-  dhikrList: [
-    "استغفر الله",
-    "سبحان الله",
-    "الحمد لله",
-    "الله أكبر",
-    "لا إله إلا الله"
-  ]
-};
+import { getState } from './js/store.js';
+import { parseHM, isWithinActiveWindow } from './js/schedule.js';
 
-const ICON_BASE64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAQAAAD9CzEMAAAAi0lEQVR42u3WMQ3AMAwEwXv4N2xio1CgAQH1ZweT/F9uD9/m92M3+2P2c3+gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4A1nEaR8P2lKAAAAAASUVORK5CYII=";
+const ALARM_NAME = 'dhikrAlarm';
 
-// Initialize extension on install
-chrome.runtime.onInstalled.addListener(async () => {
-  const data = await chrome.storage.sync.get(["isEnabled", "intervalMinutes", "dhikrList", "playSound", "requireInteraction"]);
-  
-  // Save defaults if not present
-  if (data.isEnabled === undefined) {
-    await chrome.storage.sync.set(DEFAULT_SETTINGS);
-    setupAlarm(DEFAULT_SETTINGS.isEnabled, DEFAULT_SETTINGS.intervalMinutes);
-  } else {
-    setupAlarm(data.isEnabled, data.intervalMinutes);
-  }
-});
-
-// Setup or clear the alarm
-function setupAlarm(isEnabled, intervalMinutes) {
-  chrome.alarms.clear("dhikrAlarm");
-  if (isEnabled) {
-    chrome.alarms.create("dhikrAlarm", {
-      delayInMinutes: intervalMinutes, // First trigger delay
-      periodInMinutes: intervalMinutes // Repeating interval
-    });
-  }
+/** Rebuild the periodic alarm from current settings. */
+async function rebuildAlarm() {
+  const state = await getState();
+  await chrome.alarms.clear(ALARM_NAME);
+  if (!state.isEnabled) return;
+  chrome.alarms.create(ALARM_NAME, {
+    delayInMinutes: state.intervalMinutes,
+    periodInMinutes: state.intervalMinutes,
+  });
 }
 
-// Listen for alarm triggers
-chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === "dhikrAlarm") {
-    const data = await chrome.storage.sync.get(["isEnabled", "dhikrList", "playSound", "requireInteraction"]);
-    if (data.isEnabled && data.dhikrList && data.dhikrList.length > 0) {
-      // Pick a random Dhikr
-      const randomDhikr = data.dhikrList[Math.floor(Math.random() * data.dhikrList.length)];
-      
-      chrome.notifications.create({
-        type: "basic",
-        iconUrl: "icon-48.png", // Standard real file target
-        title: "Dhikr Reminder",
-        message: randomDhikr,
-        priority: 2,
-        silent: data.playSound === false,
-        requireInteraction: data.requireInteraction === true
-      });
-    }
-  }
+/**
+ * Is now inside the active window?
+ *
+ * The alarm stays periodic and the notification is gated here, rather than
+ * scheduling next-window-start alarms. That keeps the scheduler trivially
+ * reconstructible after a service-worker restart; the cost is one cheap wake
+ * per interval overnight.
+ */
+function isWithinWindow(activeWindow, date = new Date()) {
+  if (!activeWindow?.enabled) return true;
+  const start = parseHM(activeWindow.start);
+  const end = parseHM(activeWindow.end);
+  if (start === null || end === null) return true;
+  return isWithinActiveWindow(date.getHours() * 60 + date.getMinutes(), start, end);
+}
+
+function notify(id, message, state) {
+  return new Promise((resolve) => {
+    chrome.notifications.create(id, {
+      type: 'basic',
+      iconUrl: 'icon-48.png',
+      title: 'Dhikr Reminder',
+      message,
+      priority: 2,
+      silent: state.playSound === false,
+      requireInteraction: state.requireInteraction === true,
+    }, (notificationId) => {
+      if (chrome.runtime.lastError) resolve({ error: chrome.runtime.lastError.message });
+      else resolve({ success: true, id: notificationId });
+    });
+  });
+}
+
+chrome.runtime.onInstalled.addListener(async () => {
+  // getState() runs migrate(), so this both seeds defaults and upgrades v1 data.
+  const state = await getState();
+  await chrome.storage.sync.set(state);
+  await rebuildAlarm();
 });
 
-// Listen for messages from popup or options page to update alarms
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "updateSettings") {
-    chrome.storage.sync.get(["isEnabled", "intervalMinutes"], (data) => {
-      setupAlarm(data.isEnabled, data.intervalMinutes);
-    });
-    // Respond immediately
-    sendResponse({ success: true });
-  } else if (message.action === "testNotification") {
-    chrome.storage.sync.get(["playSound", "requireInteraction"], (data) => {
-      chrome.notifications.create("test-dhikr-id", {
-        type: "basic",
-        iconUrl: "icon-48.png", // Pointing directly to a standard external file name since data URIs occasionally fail in strict Chromium environments.
-        title: "Test Reminder",
-        message: "سبحان الله",
-        priority: 2,
-        silent: data.playSound === false,
-        requireInteraction: data.requireInteraction === true
-      }, (notificationId) => {
-        if (chrome.runtime.lastError) {
-          sendResponse({ error: chrome.runtime.lastError.message });
-        } else {
-          sendResponse({ success: true, id: notificationId });
-        }
-      });
-    });
-    return true; // Keep message channel open for async sendResponse
+chrome.runtime.onStartup.addListener(rebuildAlarm);
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name !== ALARM_NAME) return;
+
+  const state = await getState();
+  if (!state.isEnabled) return;
+  if (!isWithinWindow(state.activeWindow)) return;
+
+  const eligible = state.dhikrList.filter((d) => d.enabled);
+  if (!eligible.length) {
+    // This path used to silently do nothing. The UI now warns about it too.
+    console.warn('[dhikr] alarm fired with no enabled dhikr — nothing to show');
+    return;
   }
+
+  const pick = eligible[Math.floor(Math.random() * eligible.length)];
+  await notify(`dhikr-${Date.now()}`, pick.text, state);
+});
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.action === 'updateSettings') {
+    rebuildAlarm().then(() => sendResponse({ success: true }));
+    return true;
+  }
+
+  if (message?.action === 'testNotification') {
+    getState()
+      .then((state) => notify('dhikr-test', state.dhikrList[0]?.text ?? 'سبحان الله', state))
+      .then(sendResponse);
+    return true;
+  }
+
+  return false;
 });
