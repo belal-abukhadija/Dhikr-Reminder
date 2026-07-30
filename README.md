@@ -1,10 +1,10 @@
-# Dhikr Reminder Chrome Extension
+# The Reminder — Chrome Extension
 
 A beautiful, minimalist Dhikr (Islamic remembrance) reminder for your daily routine. This Chrome extension helps you maintain a consistent habit of Dhikr by sending periodic notifications directly to your browser.
 
 ## Surfaces
 
-- **Popup** (`popup.html`) — status with a live countdown to the next reminder, master on/off, interval presets, and a link to settings.
+- **Popup** (`popup.html`) — status with a live countdown to the next reminder, master on/off, the full interval picker (presets plus custom), and a link to settings.
 - **Settings page** (`options.html`) — full configuration, opened in its own tab.
 
 ## Settings
@@ -12,7 +12,7 @@ A beautiful, minimalist Dhikr (Islamic remembrance) reminder for your daily rout
 | Setting | Notes |
 |---|---|
 | Reminders on/off | Master switch; clears the alarm when off |
-| Interval | Presets 1/5/15/30/60, or a custom value from 1 to 1440 minutes |
+| Interval | Presets 1/3/5/15/30, or a custom value from 1 to 1440 minutes |
 | Active window | Optional. Reminders fire only between the two times; overnight ranges supported |
 | Play sound | Mutes the system chime when off |
 | Persistent alert | Notification stays until dismissed |
@@ -61,7 +61,7 @@ This is the quickest method if you just downloaded the code from GitHub.
 3. Turn on **Developer mode** using the toggle switch in the top right corner.
 4. Click the **Load unpacked** button that appears in the top left corner.
 5. Select the folder containing the extension files.
-6. The Dhikr Reminder extension is now installed! Pin it to your toolbar for easy access.
+6. The Reminder extension is now installed! Pin it to your toolbar for easy access.
 
 ### Method 2: Install from the Chrome Web Store
 *(Note: Use this method if the extension is officially published)*
@@ -83,7 +83,7 @@ If you want to officially publish this extension so anyone can download it via M
    - Click the **New Item** button in the dashboard.
    - Upload the `.zip` file you created in step 1.
 4. **Complete the Store Listing:**
-   - Add your title ("Dhikr Reminder") and a detailed description.
+   - Add your title ("The Reminder") and a detailed description.
    - Upload the required graphics (a 128x128 icon, screenshots of the extension, and a 1280x800 promotional marquee image).
    - Fill out the privacy practices, ensuring you justify the use of "alarms," "notifications," and "storage" permissions.
 5. **Submit:** Once all fields are complete and saved, click **Submit for Review**. 

@@ -113,26 +113,44 @@ export async function getState() {
 
 let pending = null;
 let timer = null;
+let waiters = [];
 
 function write() {
   if (timer) { clearTimeout(timer); timer = null; }
-  if (!pending) return;
+
+  const settled = waiters;
+  waiters = [];
+
+  if (!pending) { settled.forEach((resolve) => resolve()); return; }
+
   const patch = pending;
   pending = null;
-  chrome.storage.sync.set(patch).catch((err) => {
-    console.error('[dhikr] storage write failed', err);
-  });
+
+  chrome.storage.sync.set(patch)
+    .catch((err) => { console.error('[dhikr] storage write failed', err); })
+    .finally(() => settled.forEach((resolve) => resolve()));
 }
 
 /**
  * Queue a patch. Discrete controls pass `immediate: true`; typing does not, so
  * chrome.storage.sync's 120-writes-per-minute quota is respected.
+ *
+ * Resolves once the value is actually in storage. Callers that then ask the
+ * background to rebuild the alarm MUST await this — otherwise rebuildAlarm()
+ * reads storage before the debounced write lands and re-arms on the old value.
  */
 export function setState(patch, { immediate = false } = {}) {
   pending = { ...(pending || {}), ...patch };
-  if (immediate) { write(); return; }
-  if (timer) clearTimeout(timer);
-  timer = setTimeout(write, DEBOUNCE_MS);
+
+  return new Promise((resolve) => {
+    waiters.push(resolve);
+    if (immediate) {
+      write();
+    } else {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(write, DEBOUNCE_MS);
+    }
+  });
 }
 
 /** Write any pending patch now. Call from `pagehide`. */

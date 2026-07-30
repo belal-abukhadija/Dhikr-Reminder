@@ -3,7 +3,7 @@ import { getState, setState } from './store.js';
 const TRANSLATIONS = {
   en: {
     // Header
-    headerTitle: 'Dhikr Reminder',
+    headerTitle: 'The Reminder',
     headerSubtitle: 'Keep your tongue moist with Allah’s remembrance.',
 
     // Status
@@ -90,7 +90,7 @@ const TRANSLATIONS = {
   },
 
   ar: {
-    headerTitle: 'تذكير الأذكار',
+    headerTitle: 'المُذكِر',
     headerSubtitle: 'اجعل لسانك رطباً بذكر الله.',
 
     statusActive: 'نشط',

@@ -48,7 +48,10 @@ export function createIntervalControl({ segmented, custom, input, error, getMinu
     }
 
     custom.hidden = isPreset;
-    input.value = String(minutes);
+
+    // Never rewrite the field while it has focus — a storage change landing
+    // mid-typing would otherwise replace what is being typed and jump the caret.
+    if (document.activeElement !== input) input.value = String(minutes);
   }
 
   function commit(minutes) {

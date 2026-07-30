@@ -3,6 +3,10 @@ import { parseHM, isWithinActiveWindow } from './js/schedule.js';
 
 const ALARM_NAME = 'dhikrAlarm';
 
+// Notifications are rendered by the OS, outside any page, so they cannot read
+// js/i18n.js. Keep this in sync with the `headerTitle` key there.
+const TITLE = { en: 'The Reminder', ar: 'المُذكِر' };
+
 /** Rebuild the periodic alarm from current settings. */
 async function rebuildAlarm() {
   const state = await getState();
@@ -35,7 +39,7 @@ function notify(id, message, state) {
     chrome.notifications.create(id, {
       type: 'basic',
       iconUrl: 'icon-48.png',
-      title: 'Dhikr Reminder',
+      title: TITLE[state.language] ?? TITLE.en,
       message,
       priority: 2,
       silent: state.playSound === false,

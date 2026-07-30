@@ -106,8 +106,7 @@ function paintStatus() {
 
 ui.master.addEventListener('change', () => {
   state.isEnabled = ui.master.checked;
-  setState({ isEnabled: state.isEnabled }, { immediate: true });
-  notifyBackground();
+  setState({ isEnabled: state.isEnabled }, { immediate: true }).then(notifyBackground);
   paintStatus();
 });
 
@@ -121,8 +120,12 @@ const interval = createIntervalControl({
   getMinutes: () => state.intervalMinutes,
   onCommit: (minutes, { immediate }) => {
     state.intervalMinutes = minutes;
-    setState({ intervalMinutes: minutes }, { immediate });
-    notifyBackground();
+    // Await the write: rebuildAlarm() reads storage, so firing it before the
+    // debounced write lands would re-arm the alarm on the previous interval.
+    setState({ intervalMinutes: minutes }, { immediate }).then(() => {
+      notifyBackground();
+      showToast(t('toastSaved'));
+    });
   },
 });
 

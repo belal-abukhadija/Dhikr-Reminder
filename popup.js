@@ -4,6 +4,7 @@ import {
 import { initLanguage, t } from './js/i18n.js';
 import { describeNext, formatCountdown } from './js/schedule.js';
 import { createIntervalControl } from './js/interval-control.js';
+import { showToast, mountToastHost } from './js/toast.js';
 
 const ALARM_NAME = 'dhikrAlarm';
 
@@ -35,8 +36,12 @@ const interval = createIntervalControl({
   getMinutes: () => state.intervalMinutes,
   onCommit: (minutes, { immediate }) => {
     state.intervalMinutes = minutes;
-    setState({ intervalMinutes: minutes }, { immediate });
-    notifyBackground();
+    // Await the write: rebuildAlarm() reads storage, so firing it before the
+    // debounced write lands would re-arm the alarm on the previous interval.
+    setState({ intervalMinutes: minutes }, { immediate }).then(() => {
+      notifyBackground();
+      showToast(t('toastSaved'));
+    });
   },
 });
 
@@ -44,8 +49,7 @@ const interval = createIntervalControl({
 
 ui.master.addEventListener('change', () => {
   state.isEnabled = ui.master.checked;
-  setState({ isEnabled: state.isEnabled }, { immediate: true });
-  notifyBackground();
+  setState({ isEnabled: state.isEnabled }, { immediate: true }).then(notifyBackground);
   paintStatus();
 });
 
@@ -97,6 +101,7 @@ function paintStatus() {
 /* ═══════════ INIT ═══════════ */
 
 async function init() {
+  mountToastHost();
   await initLanguage();
   state = await getState();
   await refreshAlarm();
