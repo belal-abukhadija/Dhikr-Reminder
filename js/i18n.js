@@ -68,6 +68,7 @@ const TRANSLATIONS = {
 
     // Toasts
     toastSaved: 'Settings saved',
+    savedInline: 'Saved',
     toastAdded: 'Dhikr added',
     toastUpdated: 'Dhikr updated',
     toastDeleted: 'Dhikr deleted',
@@ -148,6 +149,7 @@ const TRANSLATIONS = {
     languageDesc: 'تبديل لغة الواجهة',
 
     toastSaved: 'تم حفظ الإعدادات',
+    savedInline: 'تم الحفظ',
     toastAdded: 'تمت إضافة الذكر',
     toastUpdated: 'تم تحديث الذكر',
     toastDeleted: 'تم حذف الذكر',

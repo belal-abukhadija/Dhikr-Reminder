@@ -154,6 +154,25 @@
 .interval-custom { display: flex; align-items: center; gap: var(--space-2); }
 .interval-custom[hidden] { display: none; }
 
+/* Inline save confirmation. `margin-inline-start: auto` parks it at the far end
+   of the row — right in LTR, left in RTL — so it never overlaps anything below.
+   Fades rather than toggling `hidden`, to avoid reflowing the row. */
+.interval-saved {
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--teal);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.interval-saved.show { opacity: 1; }
+.interval-saved::before { content: '✓'; font-weight: 700; }
+.interval-saved:empty::before { content: none; }
+
 /* ═══════════ BUTTONS ═══════════ */
 .btn {
   display: inline-flex;

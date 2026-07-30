@@ -11,7 +11,29 @@ export const PRESETS = [1, 3, 5, 15, 30];
  * `onCommit(minutes, { immediate })` writes it; `immediate: false` means the
  * caller should debounce, which is what typing in the custom field needs.
  */
-export function createIntervalControl({ segmented, custom, input, error, getMinutes, onCommit }) {
+export function createIntervalControl({
+  segmented, custom, input, error, saved, getMinutes, onCommit,
+}) {
+  let savedTimer = null;
+
+  /**
+   * Flash the inline "Saved" confirmation beside the field.
+   *
+   * Deliberately not a toast: the toast is fixed to the bottom of the viewport,
+   * where it covered the popup's Settings button.
+   */
+  function confirmSaved() {
+    if (!saved) return;
+    saved.textContent = t('savedInline');
+    saved.classList.add('show');
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => {
+      saved.classList.remove('show');
+      // Clear after the fade so `role="status"` does not keep announcing it.
+      setTimeout(() => { saved.textContent = ''; }, 250);
+    }, 1600);
+  }
+
   function build() {
     const buttons = PRESETS.map((minutes) => {
       const btn = document.createElement('button');
@@ -116,5 +138,5 @@ export function createIntervalControl({ segmented, custom, input, error, getMinu
     input.value = String(getMinutes());
   });
 
-  return { build, paint };
+  return { build, paint, confirmSaved };
 }

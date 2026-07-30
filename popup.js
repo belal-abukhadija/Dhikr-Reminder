@@ -4,7 +4,6 @@ import {
 import { initLanguage, t } from './js/i18n.js';
 import { describeNext, formatCountdown } from './js/schedule.js';
 import { createIntervalControl } from './js/interval-control.js';
-import { showToast, mountToastHost } from './js/toast.js';
 
 const ALARM_NAME = 'dhikrAlarm';
 
@@ -20,6 +19,7 @@ const ui = {
   custom: el('intervalCustom'),
   intervalInput: el('intervalInput'),
   intervalError: el('intervalError'),
+  intervalSaved: el('intervalSaved'),
   openSettings: el('openSettingsBtn'),
 };
 
@@ -33,6 +33,7 @@ const interval = createIntervalControl({
   custom: ui.custom,
   input: ui.intervalInput,
   error: ui.intervalError,
+  saved: ui.intervalSaved,
   getMinutes: () => state.intervalMinutes,
   onCommit: (minutes, { immediate }) => {
     state.intervalMinutes = minutes;
@@ -40,7 +41,7 @@ const interval = createIntervalControl({
     // debounced write lands would re-arm the alarm on the previous interval.
     setState({ intervalMinutes: minutes }, { immediate }).then(() => {
       notifyBackground();
-      showToast(t('toastSaved'));
+      interval.confirmSaved();
     });
   },
 });
@@ -101,7 +102,6 @@ function paintStatus() {
 /* ═══════════ INIT ═══════════ */
 
 async function init() {
-  mountToastHost();
   await initLanguage();
   state = await getState();
   await refreshAlarm();

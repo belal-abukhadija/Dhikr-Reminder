@@ -21,6 +21,7 @@ const ui = {
   custom: el('intervalCustom'),
   intervalInput: el('intervalInput'),
   intervalError: el('intervalError'),
+  intervalSaved: el('intervalSaved'),
   windowToggle: el('windowToggle'),
   windowBody: el('windowBody'),
   windowStart: el('windowStart'),
@@ -117,6 +118,7 @@ const interval = createIntervalControl({
   custom: ui.custom,
   input: ui.intervalInput,
   error: ui.intervalError,
+  saved: ui.intervalSaved,
   getMinutes: () => state.intervalMinutes,
   onCommit: (minutes, { immediate }) => {
     state.intervalMinutes = minutes;
@@ -124,7 +126,7 @@ const interval = createIntervalControl({
     // debounced write lands would re-arm the alarm on the previous interval.
     setState({ intervalMinutes: minutes }, { immediate }).then(() => {
       notifyBackground();
-      showToast(t('toastSaved'));
+      interval.confirmSaved();
     });
   },
 });
